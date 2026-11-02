@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mega Slither Arcade | 100+ Games</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a14;
+            color: #fff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        /* Layout Header */
+        header {
+            background: #111122;
+            padding: 12px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #1f1f3a;
+            z-index: 10;
+        }
+        .logo { font-size: 22px; font-weight: 800; color: #3b82f6; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
+        .logo span { color: #4ade80; }
+        
+        /* Main Dashboard Window Split */
+        .dashboard { flex: 1; display: flex; overflow: hidden; }
+        
+        /* Left Side: 100+ Games Dynamic Sidebar Directory */
+        .sidebar {
+            width: 320px; background: #111122; border-right: 2px solid #1f1f3a;
+            display: flex; flex-direction: column; padding: 15px;
+        }
+        .search-box {
+            width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #1f1f3a;
+            background: #06060c; color: #fff; margin-bottom: 15px; outline: none;
+        }
+        .search-box:focus { border-color: #3b82f6; }
+        .game-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px; }
+        .game-item {
+            background: #16162d; border: 1px solid #1f1f3a; border-radius: 6px;
+            padding: 10px; display: flex; align-items: center; justify-content: space-between;
+            cursor: pointer; transition: background 0.2s;
+        }
+        .game-item:hover, .game-item.active { background: #1f1f3a; border-color: #3b82f6; }
+        .game-info h4 { font-size: 14px; margin-bottom: 2px; }
+        .game-info span { font-size: 11px; color: #94a3b8; text-transform: uppercase; }
+        .play-badge { font-size: 10px; background: #22c55e; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .sim-badge { font-size: 10px; background: #64748b; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+
+        /* Right Side: Primary Game Active Theater Arena Container */
+        .game-theater { flex: 1; position: relative; background: #06060c; }
+        
+        /* Canvas Slither Workspace Setup rules */
+        canvas { display: block; width: 100%; height: 100%; background: #06060c; cursor: none; }
+        
+        /* Game Over / Title Menu Screens Overlays */
+        .game-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(6, 6, 12, 0.92); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 5;
+        }
+        .menu-box {
+            background: #111122; padding: 35px; border-radius: 12px;
+            border: 2px solid #3b82f6; text-align: center; width: 340px;
+            box-shadow: 0 0 25px rgba(59, 130, 246, 0.25);
+        }
+        .menu-box h2 { margin-bottom: 15px; color: #3b82f6; font-size: 24px; }
+        .menu-box input {
+            width: 100%; padding: 12px; margin-bottom: 18px; border-radius: 6px;
+            border: 1px solid #1f1f3a; background: #06060c; color: white;
+            font-size: 16px; text-align: center; outline: none;
+        }
+        .menu-box input:focus { border-color: #3b82f6; }
+        .btn {
+            background: #3b82f6; color: white; border: none; padding: 8px 16px;
+            cursor: pointer; border-radius: 6px; font-weight: 600; transition: all 0.2s;
+            width: 100%; padding: 12px; font-size: 16px;
+        }
+        .btn:hover { background: #2563eb; transform: translateY(-1px); }
+        
+        /* HUD Floating Indicators Layout mapping */
+        #hud-overlay { position: absolute; top: 20px; left: 20px; background: rgba(17, 17, 34, 0.85); padding: 15px; border-radius: 8px; border: 1px solid #1f1f3a; pointer-events: none; }
+        #leaderboard { position: absolute; top: 20px; right: 20px; background: rgba(17, 17, 34, 0.85); padding: 15px; border-radius: 8px; border: 1px solid #1f1f3a; width: 220px; pointer-events: none; }
+        #leaderboard h3 { margin-bottom: 8px; color: #4ade80; border-bottom: 1px solid #1f1f3a; padding-bottom: 4px; font-size: 15px; text-transform: uppercase; }
+        .lb-item { display: flex; justify-content: space-between; font-size: 13px; margin: 4px 0; font-family: monospace; }
+        .lb-player { color: #4ade80; font-weight: bold; }
+        
+        /* Scrollbar aesthetics */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #111122; }
+        ::-webkit-scrollbar-thumb { background: #1f1f3a; border-radius: 3px; }
+        
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation Shell Layer -->
+    <header>
+        <div class="logo">🎮 Arcade<span>Hub</span></div>
+    </header>
+
+    <!-- Content Workspace -->
+    <div class="dashboard">
+        
+        <!-- Left Side: Interactive 100+ Matrix Directory -->
+        <div class="sidebar">
+            <input type="text" class="search-box" id="searchGames" placeholder="Search 100+ Games..." oninput="filterGames()">
+            <div class="game-list" id="gameDirectory">
+                <!-- JavaScript appends rows dynamically -->
+            </div>
+        </div>
+
+        <!-- Right Side: Dedicated Processing Screen -->
+        <div class="game-theater" id="theaterContainer">
+            <canvas id="gameCanvas"></canvas>
+            
+            <!-- Live Overlay Floating Score Engine -->
+            <div id="hud-overlay">
+                <div style="font-size: 18px; font-weight: bold;">Score: <span id="score-val" style="color: #4ade80;">10</span></div>
+                <div style="font-size: 11px; color: #64748b; margin-top: 5px; line-height: 1.4;">Track mouse to steer.<br>Hold Click to boost speed.</div>
+            </div>
+
+            <!-- Dynamic Live Game Scoreboards -->
+            <div id="leaderboard">
+                <h3>Leaderboard</h3>
+                <div id="leaderboard-list"></div>
+            </div>
+
+            <!-- Pre-Game Action / Reset Panels Interface Screen -->
+            <div class="game-overlay" id="menu-overlay">
+                <div class="menu-box" id="menu-box-content">
+                    <h2 id="menu-title">Slither.io vs Bots</h2>
+                    <p style="font-size:13px; color:#94a3b8; margin-bottom:15px;">Selected from directory: Slither</p>
+                    <input type="text" id="nickname-input" value="Slayer" maxlength="12">
+                    <button class="btn" onclick="startGame()">Launch Engine</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.onload = () => {
+            buildDirectory();
+            initCanvas();
+        };
+
+        // --- 1. GENERATING THE 100+ GAME DATABASE COLLECTION MATRIX ---
+        const gameLibrary = [
+            { name: "Slither.io Remix", cat: "Arcade", status: "playable" },
+            { name: "Snake Retro Edition", cat: "Classic", status: "simulated" },
+            { name: "Neon Space Invaders", cat: "Action", status: "simulated" },
+            { name: "Pixel Pac-Runner", cat: "Arcade", status: "simulated" },
+            { name: "Tetris Block Puzzle", cat: "Puzzle", status: "simulated" },
+            { name: "Cyber Clicker Tycoon", cat: "Classic", status: "simulated" }
+        ];
+        
+        // Generate the structural placeholders up to index 100
+        const genres = ["Action", "Arcade", "Puzzle", "Classic", "Strategy", "Retro"];
+        for (let i = 7; i <= 104; i++) {
+            gameLibrary.push({
+                name: `Retro Game Volume ${i}`,
+                cat: genres[i % genres.length],
+                status: "simulated"
+            });
+        }
+
+        function buildDirectory() {
+            const dir = document.getElementById("gameDirectory");
+            dir.innerHTML = "";
+            gameLibrary.forEach((game, index) => {
+                const el = document.createElement("div");
+                el.className = `game-item ${index === 0 ? 'active' : ''}`;
+                el.onclick = () => selectGame(index, el);
+                el.innerHTML = `
+                    <div class="game-info">
+                        <h4>${game.name}</h4>
+                        <span>${game.cat}</span>
+                    </div>
+                    <span class="${game.status === 'playable' ? 'play-badge' : 'sim-badge'}">${game.status.toUpperCase()}</span>
+                `;
+                dir.appendChild(el);
+            });
+        }
+
+        function filterGames() {
+            const query = document.getElementById("searchGames").value.toLowerCase();
+            const items = document.querySelectorAll(".game-item");
+            gameLibrary.forEach((game, idx) => {
+                if (game.name.toLowerCase().includes(query) || game.cat.toLowerCase().includes(query)) {
+                    items[idx].classList.remove("hidden");
+                } else {
+                    items[idx].classList.add("hidden");
+                }
+            });
+        }
+
+        function selectGame(index, element) {
+            document.querySelectorAll(".game-item").forEach(i => i.classList.remove("active"));
+            element.classList.add("active");
+            
+            const game = gameLibrary[index];
+            const overlay = document.getElementById("menu-overlay");
+            const title = document.getElementById("menu-title");
+            
+isPlaying = false; // Kill running instances
+overlay.style.display = "flex";
+if (game.status === "playable") {
+title.innerText = game.name;
+document.getElementById("menu-box-content").innerHTML = <h2>${game.name}</h2> <p style="font-size:13px; color:#94a3b8; margin-bottom:15px;">Status: Engine Fully Operational</p> <input type="text" id="nickname-input" value="${document.getElementById("nickname-input")?.value || 'Slayer'}" maxlength="12"> <button class="btn" onclick="startGame()">Launch Engine</button>;
+} else {
+document.getElementById("menu-box-content").innerHTML = <h2>${game.name}</h2> <p style="font-size:14px; color:#ef4444; margin: 15px 0;">This game asset is simulated inside this bundle container portfolio demonstration.</p> <button class="btn" style="background: #4b5563;" onclick="selectGame(0, document.querySelectorAll('.game-item')[0])">Return to Playable Slither</button>;
+}
+}
+// --- 2. CORE REALTIME GRAPHICS ENGINE (SLITHER FRAMEWORK) ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let worldWidth = 2500, worldHeight = 2500;
+let player, snakes = [], foods = [];
+let isPlaying = false;
+let mouseX = 0, mouseY = 0, isBoosting = false;
+const botNames = ["X-Viper", "Cobra99", "BlitzWorm", "NeonScale", "Shadow", "Alpha", "Titan", "Quantum", "Glitch", "PythonX"];
+const colors = ["#ff4757", "#2ed573", "#1e90ff", "#ffa502", "#9b59b6", "#00d2d3", "#ff6b81", "#54a0ff"];
+function initCanvas() {
+const container = document.getElementById("theaterContainer");
+canvas.width = container.offsetWidth;
+canvas.height = container.offsetHeight;
+}
+window.addEventListener('resize', initCanvas);
+class Food {
+constructor(x, y, size, color) {
+this.x = x || Math.random() * worldWidth;
+this.y = y || Math.random() * worldHeight;
+this.size = size || Math.random() * 4 + 3;
+this.color = color || colors[Math.floor(Math.random() * colors.length)];
+}
+draw(camX, camY) {
+let sx = this.x - camX + canvas.width/2;
+let sy = this.y - camY + canvas.height/2;
+if(sx < -10 || sx > canvas.width+10 || sy < -10 || sy > canvas.height+10) return;
+ctx.beginPath(); ctx.arc(sx, sy, this.size, 0, Math.PI*2);
+ctx.fillStyle = this.color; ctx.fill();
+}
+}
+class Snake {
+constructor(x, y, name, isBot) {
+this.name = name; this.isBot = isBot;
+this.segments = []; this.radius = 12; this.speed = 3;
+this.angle = Math.random() * Math.PI * 2;
+this.color = colors[Math.floor(Math.random() * colors.length)];
+this.score = 10; this.isDead = false;
+for (let i = 0; i < 20; i++) this.segments.push({x: x, y: y + i * 5});
+}
+update() {
+if (this.isDead) return;
+let moveSpeed = this.speed;
+if (!this.isBot && isBoosting && this.score > 14) {
+moveSpeed *= 1.7;
+if (Math.random() < 0.1) {
+this.score -= 0.15;
+foods.push(new Food(this.segments[this.segments.length-1].x, this.segments[this.segments.length-1].y, 3, this.color));
+}
+}
+if (this.isBot) {
+if (Math.random() < 0.02) {
+let closest = null, minDist = 250;
+for(let f of foods){
+let d = Math.hypot(f.x-this.segments.x, f.y-this.segments.y);
+if(d < minDist){ minDist = d; closest = f; }
+}
+if (closest) this.angle = Math.atan2(closest.y - this.segments.y, closest.x - this.segments.x);
+else if (Math.random() < 0.1) this.angle += (Math.random() - 0.5) * 2;
+}
+} else {
+this.angle = Math.atan2(mouseY - canvas.height/2, mouseX - canvas.width/2);
+}
+let head = this.segments;
+let nx = head.x + Math.cos(this.angle) * moveSpeed;
+let ny = head.y + Math.sin(this.angle) * moveSpeed;
+if (nx < 0 || nx > worldWidth || ny < 0 || ny > worldHeight) {
+this.angle += Math.PI / 2;
+nx = head.x + Math.cos(this.angle) * moveSpeed;
+ny = head.y + Math.sin(this.angle) * moveSpeed;
+}
+this.segments.unshift({x: nx, y: ny});
+let targetLen = Math.floor(20 + this.score * 0.4);
+while (this.segments.length > targetLen) this.segments.pop();
+this.radius = Math.min(24, 11 + this.score * 0.04);
+}
+draw(camX, camY) {
+if (this.isDead) return;
+for (let i = this.segments.length - 1; i >= 0; i--) {
+let s = this.segments[i];
+let sx = s.x - camX + canvas.width/2;
+let sy = s.y - camY + canvas.height/2;
+if (sx < -40 || sx > canvas.width + 40 || sy < -40 || sy > canvas.height + 40) continue;
+ctx.beginPath();
+ctx.arc(sx, sy, this.radius * (1 - i / (this.segments.length * 2.2)), 0, Math.PI*2);
+ctx.fillStyle = this.color;
+ctx.globalAlpha = i === 0 ? 1 : 0.75;
+ctx.fill();
+}
+ctx.globalAlpha = 1;
+ctx.fillStyle = "#94a3b8"; ctx.font = "11px sans-serif";
+ctx.fillText(this.name, this.segments.x - camX + canvas.width/2 - 15, this.segments.y - camY + canvas.height/2 - this.radius - 6);
+}
+}
+function startGame() {
+initCanvas();
+let nick = document.getElementById("nickname-input").value.trim() || "Slayer";
+player = new Snake(worldWidth/2, worldHeight/2, nick, false);
+snakes = [player]; foods = [];
+for (let i=0; i<350; i++) foods.push(new Food());
+for (let i=0; i<20; i++) {
+snakes.push(new Snake(Math.random()*worldWidth, Math.random()*worldHeight, botNames[i%botNames.length]+" Bot", true));
+}
+document.getElementById("menu-overlay").style.display = "none";
+isPlaying = true;
+runLoop();
+}
+window.addEventListener('mousemove', (e) => {
+let rect = canvas.getBoundingClientRect();
+mouseX = e.clientX - rect.left; mouseY = e.clientY - rect.top;
+});
+window.addEventListener('mousedown', () => isBoosting = true);
+window.addEventListener('mouseup', () => isBoosting = false);
+function checkCollisions() {
+let pHead = player.segments;
+for (let i = foods.length - 1; i >= 0; i--) {
+if (Math.hypot(foods[i].x - pHead.x, foods[i].y - pHead.y) < player.radius + foods[i].size) {
+player.score += foods[i].size * 0.4;
+foods.splice(i, 1); foods.push(new Food());
+}
+}
+snakes.forEach(s => {
+if (s.isBot && !s.isDead) {
+let h = s.segments;
+for (let i = foods.length - 1; i >= 0; i--) {
+if (Math.hypot(foods[i].x - h.x, foods[i].y - h.y) < s.radius + foods[i].size) {
+s.score += foods[i].size * 0.4;
+foods.splice(i, 1); foods.push(new Food());
+}
+}
+}
+});
+for (let s1 of snakes) {
+if (s1.isDead) continue;
+let h1 = s1.segments;
+for (let s2 of snakes) {
+if (s2.isDead || s1 === s2) continue;
+for (let seg of s2.segments) {
+if (Math.hypot(h1.x - seg.x, h1.y - seg.y) < s1.radius + s2.radius * 0.75) {
+s1.isDead = true;
+for(let j=0; j<s1.segments.length; j+=2) foods.push(new Food(s1.segments[j].x, s1.segments[j].y, 5, s1.color));
+if (!s1.isBot) {
+isPlaying = false;
+document.getElementById("menu-overlay").style.display = "flex";
+selectGame(0, document.querySelectorAll('.game-item')[0]);
+document.getElementById("menu-title").innerText = "Game Over!";
+} else {
+setTimeout(() => {
+if(isPlaying) {
+snakes = snakes.filter(sk => sk !== s1);
+snakes.push(new Snake(Math.random()*worldWidth, Math.random()*worldHeight, botNames[Math.floor(Math.random()*botNames.length)]+" Bot", true));
+}
+}, 1500);
+}
+break;
+}
+}
+if (s1.isDead) break;
+}
+}
+}
+function runLoop() {
+if (!isPlaying) return;
+ctx.clearRect(0, 0, canvas.width, canvas.height);
+let cx = player.segments.x, cy = player.segments.y;
+// Draw grid map arena limits
+ctx.strokeStyle = "#16162d"; ctx.lineWidth = 1;
+let g = 100;
+for(let x=0; x<worldWidth; x+=g) {
+ctx.beginPath(); ctx.moveTo(x-cx+canvas.width/2, 0-cy+canvas.height/2);
+ctx.lineTo(x-cx+canvas.width/2, worldHeight-cy+canvas.height/2); ctx.stroke();
+}
+for(let y=0; y<worldHeight; y+=g) {
+ctx.beginPath(); ctx.moveTo(0-cx+canvas.width/2, y-cy+canvas.height/2);
+ctx.lineTo(worldWidth-cx+canvas.width/2, y-cy+canvas.height/2); ctx.stroke();
+}
+ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 4;
+ctx.strokeRect(0-cx+canvas.width/2, 0-cy+canvas.height/2, worldWidth, worldHeight);
+snakes.forEach(s => s.update());
+checkCollisions();
+foods.forEach(f => f.draw(cx, cy));
+snakes.forEach(s => s.draw(cx, cy));
+document.getElementById("score-val").innerText = Math.floor(player.score);
+let sorted = [...snakes].filter(s => !s.isDead).sort((a,b)=>b.score-a.score).slice(0, 6);
+let lbl = document.getElementById("leaderboard-list"); lbl.innerHTML = "";
+sorted.forEach((s, i) => {
+let d = document.createElement('div'); d.className = "lb-item" + (!s.isBot ? " lb-player" : "");
+d.innerHTML = <span>${i+1}. ${s.name}</span><span>${Math.floor(s.score)}</span>;
+lbl.appendChild(d);
+});
+requestAnimationFrame(runLoop);
+}
